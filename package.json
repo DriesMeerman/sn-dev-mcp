@@ -1,0 +1,30 @@
+{
+  "name": "mcp-sn",
+  "version": "0.1.0",
+  "description": "MCP server for ServiceNow, to allow MCP-enabled tools to query the ServiceNow table schemas using the /now/table API; sys_db_object and sys_dictionary tables",
+  "author": "Dries Meerman",
+  "type": "module",
+  "bin": {
+    "mcp-sn": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/*.js",
+    "prepare": "npm run build",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "@types/yargs": "^17.0.33",
+    "axios": "^1.8.4",
+    "yargs": "^17.7.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "shx": "^0.3.4",
+    "typescript": "^5.8.3"
+  }
+}
