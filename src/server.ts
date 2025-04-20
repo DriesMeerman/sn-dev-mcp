@@ -16,6 +16,7 @@ import { findRelevantScripts } from "./tools/findRelevantScripts.js";
 import { findSystemProperties } from "./tools/findSystemProperties.js";
 import { findBusinessRules } from "./tools/getBusinessRuleDetails.js";
 import { initializeService } from "./services/serviceNowService.js";
+import { getAclDetails } from "./tools/getAclDetails.js";
 
 export const server = new Server(
     {
@@ -137,6 +138,28 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
                         { required: ["businessRuleName"] },
                         { required: ["tableName"] }
                     ]
+                }
+            },
+            {
+                name: "get_acl_details",
+                description: "Retrieves details for Access Control List (ACL) records matching the specified criteria (name/table, operation, type). Helps understand permissions.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        aclNameOrTable: {
+                            type: "string",
+                            description: "The specific name of the ACL (e.g., 'incident.number') or the table name (e.g., 'incident') to find related ACLs."
+                        },
+                        operation: {
+                            type: "string",
+                            description: "Optional. Filter by operation (e.g., 'read', 'write', 'create', 'delete')."
+                        },
+                        type: {
+                            type: "string",
+                            description: "Optional. Filter by type (e.g., 'record', 'field')."
+                        }
+                    },
+                    required: ["aclNameOrTable"]
                 }
             }
         ]
@@ -320,6 +343,55 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
                     {
                         type: "text",
                         text: `Error finding Business Rule(s): ${error.message}`
+                    }
+                ]
+            };
+        }
+    } else if (toolName === "get_acl_details") {
+        const aclNameOrTable = args?.aclNameOrTable as string;
+        const operation = args?.operation as string | undefined;
+        const type = args?.type as string | undefined;
+
+        if (!aclNameOrTable) {
+            throw new Error("Missing required argument: aclNameOrTable for get_acl_details");
+        }
+
+        try {
+            // Call the implementation function
+            const results = await getAclDetails({ aclNameOrTable, operation, type });
+
+            if (results && results.length > 0) {
+                // Format and return the array of details
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(results, null, 2)
+                        }
+                    ]
+                };
+            } else {
+                // No ACLs found
+                let message = `No ACLs found matching criteria: name/table='${aclNameOrTable}'`;
+                if (operation) message += `, operation='${operation}'`;
+                if (type) message += `, type='${type}'`;
+                message += '.';
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: message
+                        }
+                    ]
+                };
+            }
+        } catch (error: any) {
+            // Handle errors from the tool function
+             return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error finding ACL(s): ${error.message}`
                     }
                 ]
             };
