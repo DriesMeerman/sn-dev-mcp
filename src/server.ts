@@ -14,6 +14,7 @@ import { getFieldChoices } from "./tools/getFieldChoices.js";
 import { getScriptIncludeApi } from "./tools/getScriptIncludeApi.js";
 import { findRelevantScripts } from "./tools/findRelevantScripts.js";
 import { findSystemProperties } from "./tools/findSystemProperties.js";
+import { findBusinessRules } from "./tools/getBusinessRuleDetails.js";
 
 // Store connection string in module scope
 let serviceNowConnectionString: string | null = null;
@@ -117,6 +118,27 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
                         }
                     },
                     required: ["searchTerm"]
+                }
+            },
+            {
+                name: "get_business_rule_details",
+                description: "Retrieves metadata for Business Rules matching a specific name or table (e.g., trigger conditions, order, active status, conditions). Returns rules ordered by execution order when searching by table.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        businessRuleName: {
+                            type: "string",
+                            description: "Optional. The exact name of the Business Rule."
+                        },
+                        tableName: {
+                            type: "string",
+                            description: "Optional. The table the Business Rule runs on."
+                        }
+                    },
+                    anyOf: [
+                        { required: ["businessRuleName"] },
+                        { required: ["tableName"] }
+                    ]
                 }
             }
         ]
@@ -260,6 +282,55 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
             return { content: [ { type: "text", text: JSON.stringify(results, null, 2) } ] };
         } else {
             return { content: [ { type: "text", text: `No system properties found matching '${searchTerm}'.` } ] };
+        }
+    } else if (toolName === "get_business_rule_details") {
+        const businessRuleName = args?.businessRuleName as string | undefined;
+        const tableName = args?.tableName as string | undefined;
+
+        // Input validation (delegated to the findBusinessRules function now)
+        // if (!businessRuleName && !tableName) {
+        //     throw new Error("Missing required argument: businessRuleName or tableName for get_business_rule_details");
+        // }
+
+        try {
+            // Call the renamed implementation function
+            const results = await findBusinessRules({ businessRuleName, tableName }, serviceNowConnectionString);
+
+            if (results && results.length > 0) {
+                // Format and return the array of details
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: JSON.stringify(results, null, 2)
+                        }
+                    ]
+                };
+            } else {
+                // No rules found
+                let message = `No Business Rules found`;
+                if (businessRuleName) message += ` matching name '${businessRuleName}'`;
+                if (tableName) message += ` for table '${tableName}'`;
+                message += '.';
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: message
+                        }
+                    ]
+                };
+            }
+        } catch (error: any) {
+            // Handle specific ambiguity error or other errors from the tool function
+             return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error finding Business Rule(s): ${error.message}`
+                    }
+                ]
+            };
         }
     }
 
