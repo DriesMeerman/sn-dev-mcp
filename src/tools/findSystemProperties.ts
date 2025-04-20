@@ -45,8 +45,8 @@ export async function findSystemProperties(
         }));
 
     } catch (error) {
-        console.error(`Error fetching system properties matching '${searchTerm}':`, error);
-        // Re-throw the error potentially formatted by the service interceptor
+        // Comment out error log
+        // console.error(`Error fetching system properties matching \'${searchTerm}\':`, error);
         throw error;
     }
 }

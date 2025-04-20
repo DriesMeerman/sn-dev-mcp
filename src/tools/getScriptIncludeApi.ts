@@ -99,7 +99,8 @@ export async function getScriptIncludeApi(
         // const apiNameFromRecord = response.result[0].api_name;
 
     } catch (error) {
-        console.error(`Error fetching Script Include '${scriptIncludeName}':`, error);
+        // Comment out error log
+        // console.error(`Error fetching Script Include '${scriptIncludeName}':`, error);
         throw error; // Re-throw original or formatted error
     }
 

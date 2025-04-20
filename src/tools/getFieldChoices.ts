@@ -52,9 +52,8 @@ export async function getFieldChoices(
         }));
 
     } catch (error) {
-        console.error(`Error fetching choices for field '${fieldName}' on table '${tableName}':`, error);
-        // Do not re-throw, return null to indicate failure to the caller
-        // throw error;
+        // Comment out error log
+        // console.error(`Error fetching choices for field \'${fieldName}\' on table \'${tableName}\':`, error);
         return null;
     }
 }

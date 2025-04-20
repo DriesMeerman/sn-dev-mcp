@@ -22,7 +22,8 @@ export async function getTableSchema(tableName: string): Promise<TableSchema | n
         );
 
         if (!tableObjectResponse.result || tableObjectResponse.result.length === 0) {
-            console.warn(`Table '${tableName}' not found in ServiceNow instance.`);
+            // Comment out warning
+            // console.warn(`Table '${tableName}' not found in ServiceNow instance.`);
             return null;
         }
         const tableObject = tableObjectResponse.result[0];
@@ -43,7 +44,8 @@ export async function getTableSchema(tableName: string): Promise<TableSchema | n
         const mappedFields = (dictionaryResponse.result || []).map(dictEntry => {
             const maxLengthValue = dictEntry.max_length?.value;
             if (!dictEntry.element?.value || !dictEntry.internal_type?.value) {
-                console.warn(`Skipping dictionary entry for table ${actualTableName} due to missing element or internal_type:`, dictEntry);
+                // Comment out warning
+                // console.warn(`Skipping dictionary entry for table ${actualTableName} due to missing element or internal_type:`, dictEntry);
                 return null;
             }
 
@@ -78,7 +80,8 @@ export async function getTableSchema(tableName: string): Promise<TableSchema | n
         return tableSchema;
 
     } catch (error) {
-        console.error(`Failed to get schema for table '${tableName}':`, error);
+        // Comment out error log
+        // console.error(`Failed to get schema for table '${tableName}':`, error);
         throw error;
     }
 }

@@ -52,23 +52,23 @@ export async function findRelevantScripts(
       if (scopeResult.result?.length > 0) {
         scopeSysId = scopeResult.result[0].sys_id;
       } else {
-        console.warn(`Scope with name or label \'${scopeName}\' not found.`);
-        // If scope was the *only* criteria and not found, return empty
+        // Comment out warning
+        // console.warn(`Scope with name or label \'${scopeName}\' not found.`);
         if (!tableName && !keywords && !scriptType) {
           return [];
         }
-        // Otherwise, continue search but without scope filter (and remove scope from reason)
-        reasonParts.pop(); // Remove the scope part from the reason
+        reasonParts.pop();
         scopeSysId = null;
-        console.warn(`Continuing search without scope filter.`);
+        // Comment out warning
+        // console.warn(`Continuing search without scope filter.`);
       }
     } catch (error) {
-      console.error(`Error fetching scope sys_id for \'${scopeName}\':`, error);
-      // Allow search to continue without scope filter if scope lookup fails
-      reasonParts.pop(); // Remove the scope part from the reason
+      // Comment out error log
+      // console.error(`Error fetching scope sys_id for \'${scopeName}\':`, error);
+      reasonParts.pop();
       scopeSysId = null;
-      console.error('Continuing search without scope filter due to error.');
-      // Do not re-throw, allow search to proceed without scope
+      // Comment out error log
+      // console.error('Continuing search without scope filter due to error.');
     }
   }
 
@@ -144,7 +144,8 @@ export async function findRelevantScripts(
         });
       });
     } catch (error: any) {
-      console.error(`Error querying ${table} with query '${sysparm_query}':`, error);
+      // Comment out error log
+      // console.error(`Error querying ${table} with query '${sysparm_query}':`, error);
     }
   }
 

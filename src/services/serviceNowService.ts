@@ -44,16 +44,14 @@ export class ServiceNowService {
         this.axiosInstance.interceptors.response.use(
             response => response,
             error => {
-                // Centralized error handling/logging
-                console.error("ServiceNow API Error:", error.response?.status, error.response?.data || error.message);
+                // Comment out centralized error logging
+                // console.error("ServiceNow API Error:", error.response?.status, error.response?.data || error.message);
                  if (axios.isAxiosError(error) && error.response) {
-                    // Improve error message for common issues
                     const apiError = error.response.data?.error;
                     const message = apiError?.message || error.message;
                     const detail = apiError?.detail;
                     throw new Error(`ServiceNow API Error (${error.response.status}): ${message}${detail ? ` - ${detail}` : ''}`);
                 }
-                // Rethrow for caller to handle
                 return Promise.reject(error);
             }
         );
@@ -89,11 +87,12 @@ let authenticatedInstance: ServiceNowService | null = null;
  * Initializes the singleton ServiceNowService instance.
  * Should be called once at application startup (e.g., in main).
  * Parses the connection string to extract credentials and URL.
- * @param connectionString The full connection string (e.g., https://user:pass@instance.service-now.com)
+ * @param connectionString The full connection string (e.g., https://username:password@instance.service-now.com)
  */
 export function initializeService(connectionString: string): void {
     if (authenticatedInstance) {
-        console.warn("ServiceNowService already initialized. Ignoring subsequent call.");
+        // Comment out warning
+        // console.warn("ServiceNowService already initialized. Ignoring subsequent call.");
         return;
     }
 
@@ -117,7 +116,8 @@ export function initializeService(connectionString: string): void {
         throw new Error('Initialization failed: Username and password must be included in the connection string.');
     }
 
-    console.log(`Initializing ServiceNowService for instance: ${instanceUrl}`); // Log initialization
+    // Comment out initialization log
+    // console.error(`Initializing ServiceNowService for instance: ${instanceUrl}`); // Log initialization to stderr
     authenticatedInstance = new ServiceNowService({
         instanceUrl,
         auth: { username, password }

@@ -334,18 +334,18 @@ export async function main(connectionString: string) {
     if (!connectionString) {
         throw new Error("Connection string is required for server startup.");
     }
-    // Initialize the singleton service instance
     try {
         initializeService(connectionString);
-        console.error("ServiceNowService initialized successfully.");
+        // Comment out success log
+        // console.error("ServiceNowService initialized successfully.");
     } catch (error: any) {
-        console.error("FATAL: Failed to initialize ServiceNowService:", error.message);
-        // Depending on desired behavior, you might exit or prevent the server from fully starting
-        process.exit(1); // Exit if initialization fails
+        // Comment out fatal error log (though maybe keep this one? Depends on desired behavior)
+        // console.error("FATAL: Failed to initialize ServiceNowService:", error.message);
+        process.exit(1);
     }
 
-    // Start the MCP server transport
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("SN MCP Server running on stdio");
+    // Comment out server running log
+    // console.error("SN MCP Server running on stdio");
 }

@@ -80,7 +80,9 @@ export async function findBusinessRules(
 
         // Handle ambiguity for name-only search
         if (businessRuleName && !tableName && results.length > 1) {
-            throw new Error(`Multiple Business Rules found with name '${businessRuleName}'. Please specify the tableName to disambiguate.`);
+            // Comment out ambiguity warning
+            // console.warn(`Multiple Business Rules found with name '${businessRuleName}'. Provide tableName for specific rule.`);
+            throw new Error(`Multiple Business Rules found with name \'${businessRuleName}\'. Please specify the tableName to disambiguate.`);
         }
 
         // Map results to the details interface
@@ -105,7 +107,8 @@ export async function findBusinessRules(
         if (error instanceof Error && error.message.startsWith('Multiple Business Rules found')) {
             throw error;
         }
-        console.error(`Error fetching Business Rule details for query '${sysparm_query}':`, error);
+        // Comment out general error log
+        // console.error(`Error fetching Business Rule details for query \'${sysparm_query}\':`, error);
         throw error;
     }
 }
