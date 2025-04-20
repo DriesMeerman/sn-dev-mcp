@@ -1,5 +1,4 @@
-import { ServiceNowService } from '../services/serviceNowService.js';
-import { URL } from 'url'; // Node.js URL parser
+import { ServiceNowService, getAuthenticatedClient } from '../services/serviceNowService.js';
 
 interface FindScriptsArgs {
   tableName?: string;
@@ -26,32 +25,12 @@ const SCRIPT_TYPE_MAP: { [key: string]: { table: string; typeLabel: string } } =
 };
 
 export async function findRelevantScripts(
-  args: FindScriptsArgs,
-  connectionString: string
+  args: FindScriptsArgs
 ): Promise<ScriptResult[]> {
   const { tableName, keywords, scriptType, scopeName } = args;
 
-  // Parse connection string
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(connectionString);
-  } catch (e) {
-    throw new Error('Invalid connection string format. Expected format: https://username:password@instance.service-now.com');
-  }
-
-  const instanceUrl = parsedUrl.origin; // e.g., https://instance.service-now.com
-  const username = parsedUrl.username;
-  const password = parsedUrl.password;
-
-  if (!username || !password) {
-    throw new Error('Username and password must be included in the connection string.');
-  }
-
-  // Instantiate the ServiceNow client
-  const client = new ServiceNowService({
-    instanceUrl,
-    auth: { username, password }
-  });
+  // Get authenticated client
+  const client = getAuthenticatedClient();
 
   let scopeSysId: string | null = null;
   const reasonParts: string[] = []; // Store parts of the reason string

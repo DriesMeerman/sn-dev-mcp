@@ -1,5 +1,4 @@
-import { ServiceNowService } from '../services/serviceNowService.js';
-import { URL } from 'url';
+import { ServiceNowService, getAuthenticatedClient } from '../services/serviceNowService.js';
 
 // Represents details of a single system property
 interface SystemPropertyDetail {
@@ -12,31 +11,11 @@ interface SystemPropertyDetail {
 
 // Function to find system properties by name (exact) or description (wildcard)
 export async function findSystemProperties(
-    searchTerm: string,
-    connectionString: string
+    searchTerm: string
 ): Promise<SystemPropertyDetail[]> {
 
-    // Parse connection string
-    let parsedUrl;
-    try {
-        parsedUrl = new URL(connectionString);
-    } catch (e) {
-        console.error('Invalid connection string format for findSystemProperties', e);
-        throw new Error('Invalid connection string format.');
-    }
-    const instanceUrl = parsedUrl.origin;
-    const username = parsedUrl.username;
-    const password = parsedUrl.password;
-
-    if (!username || !password) {
-        throw new Error('Username and password must be included in the connection string.');
-    }
-
-    // Instantiate the ServiceNow client
-    const client = new ServiceNowService({
-        instanceUrl,
-        auth: { username, password }
-    });
+    // Get authenticated client
+    const client = getAuthenticatedClient();
 
     // Construct the query: exact match on name OR wildcard match on description
     const sysparm_query = `name=${searchTerm}^ORdescriptionLIKE${searchTerm}`;

@@ -1,5 +1,4 @@
-import { ServiceNowService } from '../services/serviceNowService.js';
-import { URL } from 'url';
+import { ServiceNowService, getAuthenticatedClient } from '../services/serviceNowService.js';
 import { AxiosRequestConfig } from 'axios';
 
 // Interface for the detailed information returned
@@ -26,8 +25,7 @@ interface FindBusinessRulesArgs {
 
 // Renamed function to reflect capability
 export async function findBusinessRules(
-    args: FindBusinessRulesArgs,
-    connectionString: string
+    args: FindBusinessRulesArgs
 ): Promise<BusinessRuleDetails[]> { // Always return an array
 
     const { businessRuleName, tableName } = args;
@@ -37,27 +35,8 @@ export async function findBusinessRules(
         throw new Error('Either businessRuleName or tableName must be provided.');
     }
 
-    // Parse connection string
-    let parsedUrl;
-    try {
-        parsedUrl = new URL(connectionString);
-    } catch (e) {
-        console.error('Invalid connection string format for findBusinessRules', e);
-        throw new Error('Invalid connection string format.');
-    }
-    const instanceUrl = parsedUrl.origin;
-    const username = parsedUrl.username;
-    const password = parsedUrl.password;
-
-    if (!username || !password) {
-        throw new Error('Username and password must be included in the connection string.');
-    }
-
-    // Instantiate the ServiceNow client
-    const client = new ServiceNowService({
-        instanceUrl,
-        auth: { username, password }
-    });
+    // Get the authenticated client instance
+    const client = getAuthenticatedClient();
 
     // Construct query based on provided input
     const queryParts: string[] = [

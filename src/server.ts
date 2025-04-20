@@ -15,9 +15,7 @@ import { getScriptIncludeApi } from "./tools/getScriptIncludeApi.js";
 import { findRelevantScripts } from "./tools/findRelevantScripts.js";
 import { findSystemProperties } from "./tools/findSystemProperties.js";
 import { findBusinessRules } from "./tools/getBusinessRuleDetails.js";
-
-// Store connection string in module scope
-let serviceNowConnectionString: string | null = null;
+import { initializeService } from "./services/serviceNowService.js";
 
 export const server = new Server(
     {
@@ -147,10 +145,6 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
 
 // Handle tool execution
 server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer<typeof CallToolResultSchema>> => {
-    if (!serviceNowConnectionString) {
-        throw new Error("ServiceNow connection string not initialized. Ensure main() was called with it.");
-    }
-
     const toolName = request.params.name;
     const args = request.params.arguments;
 
@@ -159,7 +153,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
         if (!tableName) {
             throw new Error("Missing required argument: tableName for get_table_schema");
         }
-        const schema: TableSchema | null = await getTableSchema(tableName, serviceNowConnectionString);
+        const schema: TableSchema | null = await getTableSchema(tableName);
 
         if (schema === null) {
             return {
@@ -188,7 +182,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
             throw new Error("Missing required arguments: tableName and fieldName for get_field_choices");
         }
 
-        const choices: FieldChoice[] | null = await getFieldChoices(tableName, fieldName, serviceNowConnectionString);
+        const choices: FieldChoice[] | null = await getFieldChoices(tableName, fieldName);
 
         if (choices === null) {
             // Error occurred during fetching
@@ -230,7 +224,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
         }
 
         // Call the tool function
-        const result = await getScriptIncludeApi(scriptIncludeName, serviceNowConnectionString);
+        const result = await getScriptIncludeApi(scriptIncludeName);
 
         // Format the result
         return {
@@ -259,9 +253,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
                 keywords,
                 scriptType,
                 scopeName
-            },
-            serviceNowConnectionString
-        );
+            });
 
         // Format and return results
         return {
@@ -277,7 +269,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
         if (!searchTerm) {
             throw new Error("Missing required argument: searchTerm for find_system_properties");
         }
-        const results = await findSystemProperties(searchTerm, serviceNowConnectionString);
+        const results = await findSystemProperties(searchTerm);
         if (results && results.length > 0) {
             return { content: [ { type: "text", text: JSON.stringify(results, null, 2) } ] };
         } else {
@@ -294,7 +286,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
 
         try {
             // Call the renamed implementation function
-            const results = await findBusinessRules({ businessRuleName, tableName }, serviceNowConnectionString);
+            const results = await findBusinessRules({ businessRuleName, tableName });
 
             if (results && results.length > 0) {
                 // Format and return the array of details
@@ -340,12 +332,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
 
 export async function main(connectionString: string) {
     if (!connectionString) {
-        throw new Error("Connection string is required.");
+        throw new Error("Connection string is required for server startup.");
     }
-    // Set the module-scoped variable
-    serviceNowConnectionString = connectionString;
+    // Initialize the singleton service instance
+    try {
+        initializeService(connectionString);
+        console.error("ServiceNowService initialized successfully.");
+    } catch (error: any) {
+        console.error("FATAL: Failed to initialize ServiceNowService:", error.message);
+        // Depending on desired behavior, you might exit or prevent the server from fully starting
+        process.exit(1); // Exit if initialization fails
+    }
 
+    // Start the MCP server transport
     const transport = new StdioServerTransport();
-    await server.connect(transport); // Connect doesn't take state here
+    await server.connect(transport);
     console.error("SN MCP Server running on stdio");
 }

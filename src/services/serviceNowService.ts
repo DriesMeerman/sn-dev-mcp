@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { URL } from 'url'; // Import URL for parsing in initializeService
 
 interface ServiceNowAuth {
     username?: string;
@@ -78,4 +79,59 @@ export class ServiceNowService {
     // async post<T = any>(path: string, data?: any, config?: AxiosRequestConfig): Promise<T> { ... }
     // async put<T = any>(path: string, data?: any, config?: AxiosRequestConfig): Promise<T> { ... }
     // async delete<T = any>(path: string, config?: AxiosRequestConfig): Promise<T> { ... }
+}
+
+// --- Singleton Logic ---
+
+let authenticatedInstance: ServiceNowService | null = null;
+
+/**
+ * Initializes the singleton ServiceNowService instance.
+ * Should be called once at application startup (e.g., in main).
+ * Parses the connection string to extract credentials and URL.
+ * @param connectionString The full connection string (e.g., https://user:pass@instance.service-now.com)
+ */
+export function initializeService(connectionString: string): void {
+    if (authenticatedInstance) {
+        console.warn("ServiceNowService already initialized. Ignoring subsequent call.");
+        return;
+    }
+
+    if (!connectionString) {
+        throw new Error("Initialization failed: Connection string is required.");
+    }
+
+    // Parse connection string
+    let parsedUrl;
+    try {
+        parsedUrl = new URL(connectionString);
+    } catch (e) {
+        throw new Error('Initialization failed: Invalid connection string format. Expected: https://username:password@instance.service-now.com');
+    }
+
+    const instanceUrl = parsedUrl.origin; // e.g., https://instance.service-now.com
+    const username = decodeURIComponent(parsedUrl.username); // Handle potential encoding
+    const password = decodeURIComponent(parsedUrl.password); // Handle potential encoding
+
+    if (!username || !password) {
+        throw new Error('Initialization failed: Username and password must be included in the connection string.');
+    }
+
+    console.log(`Initializing ServiceNowService for instance: ${instanceUrl}`); // Log initialization
+    authenticatedInstance = new ServiceNowService({
+        instanceUrl,
+        auth: { username, password }
+    });
+}
+
+/**
+ * Retrieves the initialized singleton ServiceNowService instance.
+ * Throws an error if the service has not been initialized via initializeService.
+ * @returns The authenticated ServiceNowService client.
+ */
+export function getAuthenticatedClient(): ServiceNowService {
+    if (!authenticatedInstance) {
+        throw new Error("ServiceNowService not initialized. Call initializeService first.");
+    }
+    return authenticatedInstance;
 }

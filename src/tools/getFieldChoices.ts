@@ -4,8 +4,7 @@ import {
     SysChoiceRecord,
     FieldChoice // Added for the return type
 } from "../types.js";
-import { ServiceNowService } from "../services/serviceNowService.js";
-import { URL } from 'url';
+import { ServiceNowService, getAuthenticatedClient } from "../services/serviceNowService.js";
 
 /**
  * Fetches the available choices for a specific field on a specific ServiceNow table.
@@ -16,81 +15,46 @@ import { URL } from 'url';
  *
  * @param tableName The technical name of the ServiceNow table (e.g., 'incident').
  * @param fieldName The technical name of the field (element) on the table (e.g., 'state').
- * @param connectionString The ServiceNow connection string (e.g., 'https://user:password@instance.service-now.com').
  * @returns A promise that resolves to an array of FieldChoice objects sorted by label, or null if the field/table has no choices or an error occurs.
  */
 export async function getFieldChoices(
     tableName: string,
-    fieldName: string,
-    connectionString: string
+    fieldName: string
 ): Promise<FieldChoice[] | null> {
-    // Parse the connection string (same logic as getTableSchema)
-    let parsedUrl: URL;
-    try {
-        parsedUrl = new URL(connectionString);
-    } catch (e) {
-        console.error("Invalid connection string format.", e);
-        throw new Error("Invalid connection string format. Expected format: https://user:password@instance.service-now.com");
-    }
-
-    const username = parsedUrl.username;
-    const password = parsedUrl.password;
-    const instanceUrl = parsedUrl.origin;
-
-    if (!username || !password || !instanceUrl) {
-        throw new Error("Connection string must include username, password, and instance URL.");
-    }
-
-    const auth = { username, password };
-    const service = new ServiceNowService({
-        instanceUrl,
-        auth: auth
-    });
+    // Get authenticated client
+    const client = getAuthenticatedClient();
 
     try {
-        // Fetch active choices for the specific table and field
-        const choiceResponse = await service.get<SysChoiceResponse>(
-            `/table/sys_choice`,
-            {
-                params: {
-                    sysparm_query: `name=${tableName}^element=${fieldName}^inactive=false`,
-                    sysparm_fields: 'value,label', // Request only value and label
-                    sysparm_display_value: 'all' // Get both value and display_value for label
-                }
-            }
-        );
+        // Construct the query for sys_choice table
+        const sysparm_query = `name=${tableName}^element=${fieldName}^inactive=false`;
+        // Fetch value and label, sort by sequence
+        const sysparm_fields = 'value,label,sequence';
+        const sysparm_orderby = 'sequence';
 
-        if (!choiceResponse.result || choiceResponse.result.length === 0) {
-            console.log(`No active choices found for field '${fieldName}' on table '${tableName}'.`);
-            return []; // Return empty array if no choices found
-        }
+        // Use the authenticated client
+        const response = await client.get<{ result: any[] }>('/table/sys_choice', {
+            params: {
+                sysparm_query,
+                sysparm_fields,
+                sysparm_orderby,
+                sysparm_exclude_reference_link: true,
+                sysparm_limit: 1000 // High limit for choices
+            },
+        });
 
-        // Map results to FieldChoice[] and filter out any invalid entries
-        const choices: FieldChoice[] = choiceResponse.result
-            .map(choiceEntry => {
-                // Ensure both value and label are present
-                if (choiceEntry.value?.value && choiceEntry.label?.display_value) {
-                    return {
-                        value: choiceEntry.value.value,
-                        label: choiceEntry.label.display_value
-                    };
-                } else {
-                    console.warn(`Skipping invalid choice entry for ${tableName}.${fieldName}:`, choiceEntry);
-                    return null; // Mark invalid entries as null
-                }
-            })
-            .filter((choice): choice is FieldChoice => choice !== null); // Filter out the null entries
+        const results = response.result || [];
 
-        // Sort choices by label
-        choices.sort((a, b) => a.label.localeCompare(b.label));
-
-        return choices;
+        // Map the results to the FieldChoice interface
+        return results.map((choice: any): FieldChoice => ({
+            value: choice.value,
+            label: choice.label,
+            // sequence: parseInt(choice.sequence, 10) || 0 // Sequence might be useful later
+        }));
 
     } catch (error) {
-        console.error(`Failed to get choices for field '${fieldName}' on table '${tableName}':`, error);
-        // Depending on requirements, you might return null or rethrow
-        // Returning null indicates an issue fetching, vs empty array meaning no choices exist.
+        console.error(`Error fetching choices for field '${fieldName}' on table '${tableName}':`, error);
+        // Do not re-throw, return null to indicate failure to the caller
+        // throw error;
         return null;
-        // throw error; // Or rethrow if the caller should handle it
     }
 }

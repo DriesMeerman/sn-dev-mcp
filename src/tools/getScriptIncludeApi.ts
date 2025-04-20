@@ -1,5 +1,6 @@
-import { ServiceNowService } from '../services/serviceNowService.js';
-import { URL } from 'url'; // Import URL for parsing
+import { ServiceNowService, getAuthenticatedClient } from '../services/serviceNowService.js';
+// import { URL } from 'url'; // Import URL for parsing
+import ts from 'typescript';
 
 // Define the interface for the expected result from the ServiceNow API
 interface ScriptIncludeRecord {
@@ -35,147 +36,169 @@ const objectFunctionWithoutJsDocRegex = /(\w+)\s*:\s*function\s*\(([^)]*)\)/g;
 // Regex to extract parameters from the matched parameter string
 const paramsRegex = /\/\*.*?\*\/\s*([\w]+)|\b([\w]+)\b/g;
 
+interface ScriptIncludeFunction {
+    name: string;
+    parameters: string[];
+    jsDoc?: string;
+    // Add line numbers? Range?
+}
+
+interface ScriptIncludeAPIResult {
+    apiName: string; // e.g., IncidentUtils
+    scriptContent?: string; // Optionally return full script
+    functions: ScriptIncludeFunction[];
+}
+
 // Renamed and exported function
 export async function getScriptIncludeApi(
-    // Accept connection string instead of service instance
-    scriptIncludeName: string,
-    connectionString: string
-): Promise<any> {
-    // Removed direct param destructuring
+    scriptIncludeName: string
+    // connectionString: string
+): Promise<ScriptIncludeAPIResult> {
 
-    if (!scriptIncludeName) {
-        throw new Error('Missing required parameter: scriptIncludeName');
-    }
-    if (!connectionString) {
-        throw new Error("Missing connection string");
-    }
-
-    // Parse the connection string to create the service
-    let parsedUrl: URL;
+    // Remove connection string parsing and client instantiation
+    /*
+    let parsedUrl;
     try {
         parsedUrl = new URL(connectionString);
     } catch (e) {
-        throw new Error("Invalid connection string format. Expected format: https://user:password@instance.service-now.com");
+        console.error('Invalid connection string format for getScriptIncludeApi', e);
+        throw new Error('Invalid connection string format.');
     }
+    const instanceUrl = parsedUrl.origin;
     const username = parsedUrl.username;
     const password = parsedUrl.password;
-    const instanceUrl = parsedUrl.origin;
-    if (!username || !password || !instanceUrl) {
-        throw new Error("Connection string must include username, password, and instance URL");
+
+    if (!username || !password) {
+        throw new Error('Username and password must be included in the connection string.');
     }
-    const auth = { username, password };
-    const serviceNowService = new ServiceNowService({
+    const client = new ServiceNowService({
         instanceUrl,
-        auth: auth
+        auth: { username, password }
     });
-    // Now proceed with the original logic using the created service
+    */
+
+    // Get authenticated client
+    const client = getAuthenticatedClient();
+
+    // Fetch the Script Include record
+    let scriptContent = '';
     try {
-        // Fetch the Script Include record from ServiceNow
-        const response = await serviceNowService.get<ScriptIncludeRecord>('/table/sys_script_include', {
+        const response = await client.get<{ result: { script: string, api_name: string }[] }>('/table/sys_script_include', {
             params: {
-                sysparm_query: `name=${scriptIncludeName}^ORapi_name=${scriptIncludeName}`,
-                sysparm_fields: 'script,name,sys_id,api_name',
-                sysparm_limit: 1
-            }
+                sysparm_query: `api_name=${scriptIncludeName}`,
+                sysparm_fields: 'script,api_name',
+                sysparm_limit: 1,
+            },
         });
 
         if (!response.result || response.result.length === 0) {
-            return { message: `Script Include matching name or API name '${scriptIncludeName}' not found.` };
+            throw new Error(`Script Include '${scriptIncludeName}' not found.`);
         }
+        scriptContent = response.result[0].script;
+        // We already have the api_name, but could verify it matches:
+        // const apiNameFromRecord = response.result[0].api_name;
 
-        const record = response.result[0]; // Get the first matching record
-        const scriptContent = record.script;
-        const actualName = record.name;
-        const apiName = record.api_name;
-
-        if (!scriptContent) {
-            return { message: `Script Include '${actualName || apiName}' found but has no script content.` };
-        }
-
-        const extractedApis: ScriptIncludeApiResult[] = [];
-        const foundFunctions = new Set<string>(); // Keep track of functions found to avoid duplicates
-        let match;
-
-        // Pass 1: JSDoc + Standard function
-        while ((match = functionRegex.exec(scriptContent)) !== null) {
-            const jsdoc = match[0].match(/\/\*\*([^*]|(\*(?!\/)))*?\*\//)?.[0]; // Extract full JSDoc block
-            const functionName = match[3];
-            const paramString = match[4];
-            if (jsdoc && functionName && !foundFunctions.has(functionName)) {
-                const parameters = extractParameters(paramString);
-                extractedApis.push({ functionName, parameters, jsdoc });
-                foundFunctions.add(functionName);
-            }
-        }
-
-        // Pass 2: JSDoc + Object property function
-        while ((match = objectFunctionRegex.exec(scriptContent)) !== null) {
-            const jsdoc = match[0].match(/\/\*\*([^*]|(\*(?!\/)))*?\*\//)?.[0];
-            const functionName = match[3]; // Function name is the key
-            const paramString = match[4];
-             if (jsdoc && functionName && !foundFunctions.has(functionName)) {
-                const parameters = extractParameters(paramString);
-                extractedApis.push({ functionName, parameters, jsdoc });
-                foundFunctions.add(functionName);
-            }
-        }
-
-        // Pass 3: Standard function without JSDoc
-        while ((match = functionWithoutJsDocRegex.exec(scriptContent)) !== null) {
-            const functionName = match[1];
-            const paramString = match[2];
-             if (functionName && !foundFunctions.has(functionName)) {
-                 const parameters = extractParameters(paramString);
-                extractedApis.push({ functionName, parameters });
-                foundFunctions.add(functionName);
-            }
-        }
-
-        // Pass 4: Object property function without JSDoc
-        while ((match = objectFunctionWithoutJsDocRegex.exec(scriptContent)) !== null) {
-            const functionName = match[1]; // Function name is the key
-            const paramString = match[2];
-            if (functionName && !foundFunctions.has(functionName)) {
-                const parameters = extractParameters(paramString);
-                extractedApis.push({ functionName, parameters });
-                foundFunctions.add(functionName);
-            }
-        }
-
-        // Helper function to extract parameters cleanly
-        function extractParameters(paramString: string): string[] {
-            const parameters = [];
-            let paramMatch;
-            // Reset lastIndex since we are reusing the regex in a loop controlled elsewhere
-            paramsRegex.lastIndex = 0;
-            while ((paramMatch = paramsRegex.exec(paramString)) !== null) {
-                if (paramMatch[1]) parameters.push(paramMatch[1].trim()); // Parameter with /* comment */
-                else if (paramMatch[2]) parameters.push(paramMatch[2].trim()); // Parameter without comment
-            }
-            return parameters;
-        }
-
-        if (extractedApis.length === 0) {
-             return {
-                 message: `No public functions found in Script Include '${actualName || apiName}'. Parsing might need improvement for other coding styles.`,
-                 name: actualName,
-                 api_name: apiName
-             };
-        }
-
-        // Format the output
-        // Sort API results alphabetically by function name
-        extractedApis.sort((a, b) => a.functionName.localeCompare(b.functionName));
-
-        return {
-            scriptIncludeName: scriptIncludeName, // The name used for searching
-            name: actualName, // Actual name from the record
-            api_name: apiName, // Actual api_name from the record
-            api: extractedApis,
-        };
-
-    } catch (error: any) {
-        console.error(`Error fetching/parsing Script Include API for ${scriptIncludeName}:`, error);
-        throw new Error(`Failed to get Script Include API for '${scriptIncludeName}': ${error.message}`);
+    } catch (error) {
+        console.error(`Error fetching Script Include '${scriptIncludeName}':`, error);
+        throw error; // Re-throw original or formatted error
     }
+
+    // Parse the script content using TypeScript compiler API
+    const sourceFile = ts.createSourceFile(
+        `${scriptIncludeName}.js`, // File name for context
+        scriptContent,
+        ts.ScriptTarget.Latest,
+        true // setParentNodes
+    );
+
+    const apiResult: ScriptIncludeAPIResult = {
+        apiName: scriptIncludeName,
+        functions: [],
+        // scriptContent: scriptContent // Uncomment to include script content
+    };
+
+    // Recursive function to find function declarations/expressions
+    function findFunctions(node: ts.Node) {
+        let functionName: string | undefined = undefined;
+        let parameters: string[] = [];
+        let nodeToExtractJsDocFrom: ts.Node | undefined = node;
+
+        // Identify function declarations (e.g., function myFunction() {})
+        if (ts.isFunctionDeclaration(node) && node.name) {
+            functionName = node.name.text;
+            parameters = node.parameters.map(p => p.name.getText(sourceFile));
+        }
+        // Identify function expressions assigned to variables/properties
+        // (e.g., var myFunc = function() {}; Class.prototype.myMethod = function() {}; this.myMethod = function() {} )
+        else if (ts.isVariableStatement(node)) {
+            for (const decl of node.declarationList.declarations) {
+                if (decl.initializer && ts.isFunctionExpression(decl.initializer) && ts.isIdentifier(decl.name)) {
+                    functionName = decl.name.text;
+                    parameters = decl.initializer.parameters.map(p => p.name.getText(sourceFile));
+                    nodeToExtractJsDocFrom = decl.initializer; // JSDoc might be on the expression
+                }
+            }
+        }
+        else if (ts.isExpressionStatement(node) && ts.isBinaryExpression(node.expression) && node.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+            const left = node.expression.left;
+            const right = node.expression.right;
+
+            if (ts.isFunctionExpression(right)) {
+                 // Handle Class.prototype.method = function()...
+                if (ts.isPropertyAccessExpression(left) && left.name) {
+                     functionName = left.name.text;
+                }
+                // Handle this.method = function()... (Corrected check)
+                else if (ts.isPropertyAccessExpression(left) && left.expression.kind === ts.SyntaxKind.ThisKeyword && left.name) {
+                     functionName = left.name.text;
+                }
+                // Could add more specific checks if needed
+
+                 if (functionName) {
+                      parameters = right.parameters.map(p => p.name.getText(sourceFile));
+                      nodeToExtractJsDocFrom = right; // JSDoc might be on the expression
+                 }
+            }
+        }
+
+        if (functionName && nodeToExtractJsDocFrom) {
+            const jsDoc = getJsDocString(nodeToExtractJsDocFrom);
+            apiResult.functions.push({ name: functionName, parameters, jsDoc });
+        }
+
+        ts.forEachChild(node, findFunctions);
+    }
+
+    // Helper to extract JSDoc comments
+    function getJsDocString(node: ts.Node): string | undefined {
+        // @ts-ignore - internal TypeScript API might change, but necessary for JSDoc
+        const comments = ts.getJSDocTags(node);
+        if (comments && comments.length > 0) {
+             // @ts-ignore
+            return comments.map(tag => tag.comment ? `* ${tag.comment}` : '*').join('\n ');
+        }
+        // Fallback or alternative: Look for full text comments immediately preceding
+        const commentRanges = ts.getLeadingCommentRanges(sourceFile.getFullText(), node.getFullStart());
+        if (commentRanges) {
+            for (const range of commentRanges) {
+                if (range.kind === ts.SyntaxKind.MultiLineCommentTrivia) {
+                    const commentText = sourceFile.getFullText().substring(range.pos, range.end);
+                    if (commentText.startsWith('/**')) { // Check if it looks like JSDoc
+                        // Basic cleanup
+                        return commentText
+                            .replace(/^\/\*\*\s*\n?/, '') // Remove leading /**
+                            .replace(/\n?\s*\*\/$/, '')   // Remove trailing */
+                            .split('\n')
+                            .map(line => line.replace(/^\s*\* ?/, '')) // Remove leading * per line
+                            .join('\n');
+                    }
+                }
+            }
+        }
+        return undefined;
+    }
+
+    findFunctions(sourceFile);
+
+    return apiResult;
 }
