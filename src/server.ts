@@ -13,6 +13,7 @@ import { getTableSchema } from "./tools/getTableSchema.js";
 import { getFieldChoices } from "./tools/getFieldChoices.js";
 import { getScriptIncludeApi } from "./tools/getScriptIncludeApi.js";
 import { findRelevantScripts } from "./tools/findRelevantScripts.js";
+import { findSystemProperties } from "./tools/findSystemProperties.js";
 
 // Store connection string in module scope
 let serviceNowConnectionString: string | null = null;
@@ -94,7 +95,7 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
                         scopeName: {
                             type: "string",
                             description:
-                                "Optional. The name of the application scope to filter by (e.g., 'Global', 'My Custom App').",
+                                "Optional. The name or label of the application scope to filter by (e.g., 'Global', 'My Custom App').",
                         },
                     },
                     anyOf: [
@@ -103,6 +104,20 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
                         { required: ["scopeName"] },
                     ],
                 },
+            },
+            {
+                name: "find_system_properties",
+                description: "Searches system properties (sys_properties) by exact name OR wildcard in description. Returns name, value, description, scope, and last updated date.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        searchTerm: {
+                            type: "string",
+                            description: "The exact property name or a term to search for (wildcard supported) in the description."
+                        }
+                    },
+                    required: ["searchTerm"]
+                }
             }
         ]
     };
@@ -235,6 +250,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
                 }
             ]
         };
+    } else if (toolName === "find_system_properties") {
+        const searchTerm = args?.searchTerm as string;
+        if (!searchTerm) {
+            throw new Error("Missing required argument: searchTerm for find_system_properties");
+        }
+        const results = await findSystemProperties(searchTerm, serviceNowConnectionString);
+        if (results && results.length > 0) {
+            return { content: [ { type: "text", text: JSON.stringify(results, null, 2) } ] };
+        } else {
+            return { content: [ { type: "text", text: `No system properties found matching '${searchTerm}'.` } ] };
+        }
     }
 
     // If tool name doesn't match known tools
