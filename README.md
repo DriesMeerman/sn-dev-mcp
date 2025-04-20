@@ -1,5 +1,8 @@
 # ServiceNow MCP server
 
+‼️ This is a POC to play around with the protocol the code is very untested
+
+
 This project provides a Model Context Protocol (MCP) server designed to bridge the gap between MCP-enabled development tools (like compatible IDEs and editors) and ServiceNow instances.
 It allows these tools to query and understand the structure of your ServiceNow environment by interacting with the ServiceNow REST API.
 Various tools are all focussed on allowing LLM's to write better code in your ServiceNow environment.
