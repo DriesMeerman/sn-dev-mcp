@@ -12,6 +12,7 @@ import { TableSchema, FieldChoice } from "./types.js";
 import { getTableSchema } from "./tools/getTableSchema.js";
 import { getFieldChoices } from "./tools/getFieldChoices.js";
 import { getScriptIncludeApi } from "./tools/getScriptIncludeApi.js";
+import { findRelevantScripts } from "./tools/findRelevantScripts.js";
 
 // Store connection string in module scope
 let serviceNowConnectionString: string | null = null;
@@ -69,6 +70,39 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
                     },
                     required: ["scriptIncludeName"]
                 }
+            },
+            {
+                name: "find_relevant_scripts",
+                description:
+                    "Searches for existing scripts (Business Rules, Script Includes, Client Scripts) potentially relevant based on table name, keywords, or scope. Helps discover existing logic.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        tableName: {
+                            type: "string",
+                            description: "Optional. The technical name of the table (e.g., 'incident').",
+                        },
+                        keywords: {
+                            type: "string",
+                            description: "Optional. Keywords to search in script names or content.",
+                        },
+                        scriptType: {
+                            type: "string",
+                            description:
+                                "Optional. Filter by script type (e.g., 'Business Rule', 'Script Include', 'Client Script').",
+                        },
+                        scopeName: {
+                            type: "string",
+                            description:
+                                "Optional. The name of the application scope to filter by (e.g., 'Global', 'My Custom App').",
+                        },
+                    },
+                    anyOf: [
+                        { required: ["tableName"] },
+                        { required: ["keywords"] },
+                        { required: ["scopeName"] },
+                    ],
+                },
             }
         ]
     };
@@ -80,8 +114,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
         throw new Error("ServiceNow connection string not initialized. Ensure main() was called with it.");
     }
 
-    if (request.params.name === "get_table_schema") {
-        const tableName = request.params.arguments?.tableName as string;
+    const toolName = request.params.name;
+    const args = request.params.arguments;
+
+    if (toolName === "get_table_schema") {
+        const tableName = args?.tableName as string;
         if (!tableName) {
             throw new Error("Missing required argument: tableName for get_table_schema");
         }
@@ -106,9 +143,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
                 }
             ]
         };
-    } else if (request.params.name === "get_field_choices") {
-        const tableName = request.params.arguments?.tableName as string;
-        const fieldName = request.params.arguments?.fieldName as string;
+    } else if (toolName === "get_field_choices") {
+        const tableName = args?.tableName as string;
+        const fieldName = args?.fieldName as string;
 
         if (!tableName || !fieldName) {
             throw new Error("Missing required arguments: tableName and fieldName for get_field_choices");
@@ -148,8 +185,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
                 }
             ]
         };
-    } else if (request.params.name === "get_script_include_api") {
-        const scriptIncludeName = request.params.arguments?.scriptIncludeName as string;
+    } else if (toolName === "get_script_include_api") {
+        const scriptIncludeName = args?.scriptIncludeName as string;
 
         if (!scriptIncludeName) {
             throw new Error("Missing required argument: scriptIncludeName for get_script_include_api");
@@ -167,10 +204,41 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
                 }
             ]
         };
+    } else if (toolName === "find_relevant_scripts") {
+        // Extract arguments
+        const tableName = args?.tableName as string | undefined;
+        const keywords = args?.keywords as string | undefined;
+        const scriptType = args?.scriptType as string | undefined;
+        const scopeName = args?.scopeName as string | undefined;
+
+        // Validate: At least one criteria must be provided
+        if (!tableName && !keywords && !scopeName) {
+            throw new Error("Missing required arguments: At least one of tableName, keywords, or scopeName must be provided for find_relevant_scripts");
+        }
+
+        // Call the implementation function
+        const results = await findRelevantScripts({
+                tableName,
+                keywords,
+                scriptType,
+                scopeName
+            },
+            serviceNowConnectionString
+        );
+
+        // Format and return results
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(results, null, 2)
+                }
+            ]
+        };
     }
 
     // If tool name doesn't match known tools
-    throw new Error(`Tool not found: ${request.params.name}`);
+    throw new Error(`Tool not found: ${toolName}`);
 });
 
 export async function main(connectionString: string) {

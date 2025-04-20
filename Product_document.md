@@ -85,12 +85,37 @@ This project is explicitly a POC, intended to validate the approach and demonstr
     *   **Use Case:** Enables LLM to correctly instantiate and call methods from Script Includes.
 
 *   **`find_relevant_scripts`**
-    *   **Description:** Searches for existing scripts (Business Rules, Script Includes, Client Scripts) potentially relevant based on table name or keywords. Helps discover existing logic.
+    *   **Description:** Searches for existing scripts (Business Rules, Script Includes, Client Scripts) potentially relevant based on table name, keywords, or scope. Helps discover existing logic.
     *   **Input Schema:**
         ```json
-        { "type": "object", "properties": { "tableName": { "type": "string", "description": "Optional. The technical name of the table (e.g., 'incident')." }, "keywords": { "type": "string", "description": "Optional. Keywords to search in script names or content." }, "scriptType": { "type": "string", "description": "Optional. Filter by script type (e.g., 'Business Rule', 'Script Include')." } }, "anyOf": [ { "required": ["tableName"] }, { "required": ["keywords"] } ] }
+        {
+          "type": "object",
+          "properties": {
+            "tableName": {
+              "type": "string",
+              "description": "Optional. The technical name of the table (e.g., 'incident')."
+            },
+            "keywords": {
+              "type": "string",
+              "description": "Optional. Keywords to search in script names or content."
+            },
+            "scriptType": {
+              "type": "string",
+              "description": "Optional. Filter by script type (e.g., 'Business Rule', 'Script Include', 'Client Script')."
+            },
+            "scopeName": {
+              "type": "string",
+              "description": "Optional. The name of the application scope to filter by (e.g., 'Global', 'My Custom App')."
+            }
+          },
+          "anyOf": [
+            { "required": ["tableName"] },
+            { "required": ["keywords"] },
+            { "required": ["scopeName"] }
+          ]
+        }
         ```
-    *   **Use Case:** Helps LLM find existing code patterns, avoid duplication.
+    *   **Use Case:** Helps LLM find existing code patterns within a specific scope, avoid duplication.
 
 *   **`get_system_property_value`**
     *   **Description:** Retrieves the value of a specific system property (`sys_properties`).
