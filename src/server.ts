@@ -8,8 +8,9 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { TableSchema } from "./types.js";
+import { TableSchema, FieldChoice } from "./types.js";
 import { getTableSchema } from "./tools/getTableSchema.js";
+import { getFieldChoices } from "./tools/getFieldChoices.js";
 
 // Store connection string in module scope
 let serviceNowConnectionString: string | null = null;
@@ -30,34 +31,47 @@ export const server = new Server(
 // Define available tools
 server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeof ListToolsResultSchema>> => {
     return {
-        tools: [{
-            name: "get_table_schema",
-            description: "Get the schema / table definition for a servicenow table by technical name",
-            inputSchema: {
-                type: "object",
-                properties: {
-                    tableName: { type: "string" },
-                },
-                required: ["tableName"]
+        tools: [
+            {
+                name: "get_table_schema",
+                description: "Get the schema / table definition for a ServiceNow table by its technical name (e.g., 'incident').",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        tableName: { type: "string", description: "The technical name of the ServiceNow table." },
+                    },
+                    required: ["tableName"]
+                }
+            },
+            {
+                name: "get_field_choices",
+                description: "Get the available choices for a specific field on a ServiceNow table. Useful for fields of type 'choice' or integer fields representing states (e.g., incident state).",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        tableName: { type: "string", description: "The technical name of the ServiceNow table (e.g., 'incident')." },
+                        fieldName: { type: "string", description: "The technical name of the field (element) on the table (e.g., 'state')." },
+                    },
+                    required: ["tableName", "fieldName"]
+                }
             }
-        }]
+        ]
     };
 });
 
 // Handle tool execution
 server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer<typeof CallToolResultSchema>> => {
+    if (!serviceNowConnectionString) {
+        throw new Error("ServiceNow connection string not initialized. Ensure main() was called with it.");
+    }
+
     if (request.params.name === "get_table_schema") {
-        if (!serviceNowConnectionString) {
-            throw new Error("ServiceNow connection string not initialized. Ensure main() was called with it.");
-        }
         const tableName = request.params.arguments?.tableName as string;
         if (!tableName) {
-            throw new Error("Missing required argument: tableName");
+            throw new Error("Missing required argument: tableName for get_table_schema");
         }
-        // Pass the module-scoped connectionString
-        const schema = await getTableSchema(tableName, serviceNowConnectionString);
+        const schema: TableSchema | null = await getTableSchema(tableName, serviceNowConnectionString);
 
-        // Check if schema is null (table not found)
         if (schema === null) {
             return {
                 content: [
@@ -69,7 +83,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
             };
         }
 
-        // If schema is found, return it
         return {
             content: [
                 {
@@ -78,7 +91,51 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
                 }
             ]
         };
+    } else if (request.params.name === "get_field_choices") {
+        const tableName = request.params.arguments?.tableName as string;
+        const fieldName = request.params.arguments?.fieldName as string;
+
+        if (!tableName || !fieldName) {
+            throw new Error("Missing required arguments: tableName and fieldName for get_field_choices");
+        }
+
+        const choices: FieldChoice[] | null = await getFieldChoices(tableName, fieldName, serviceNowConnectionString);
+
+        if (choices === null) {
+            // Error occurred during fetching
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Error fetching choices for field '${fieldName}' on table '${tableName}'. Check server logs for details.`,
+                    }
+                ]
+            };
+        } else if (choices.length === 0) {
+            // No choices found
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `No active choices found for field '${fieldName}' on table '${tableName}'.`,
+                    }
+                ]
+            };
+        }
+
+        // Choices found
+
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(choices, null, 2),
+                }
+            ]
+        };
     }
+
+    // If tool name doesn't match known tools
     throw new Error(`Tool not found: ${request.params.name}`);
 });
 

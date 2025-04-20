@@ -68,3 +68,25 @@ export interface SysDictionaryRecord {
 export interface SysDictionaryResponse {
     result: SysDictionaryRecord[];
 }
+
+// --- Interfaces for ServiceNow sys_choice API Response ---
+
+// Interface for a single record from sys_choice (needed for getFieldChoices)
+export interface SysChoiceRecord {
+    element: ValueDisplayValue; // Field name (used for filtering, though API returns it)
+    value: ValueDisplayValue;   // Choice value
+    label: ValueDisplayValue;   // Choice label
+    inactive: ValueDisplayValue; // Inactive flag ('true'/'false')
+    // sequence?: ValueDisplayValue;    // Optional sequence for ordering
+}
+
+// Interface for the response from /api/now/table/sys_choice (needed for getFieldChoices)
+export interface SysChoiceResponse {
+    result: SysChoiceRecord[];
+}
+
+// Simple type for representing a field choice (output of getFieldChoices)
+export interface FieldChoice {
+    value: string;
+    label: string;
+}
