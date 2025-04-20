@@ -11,6 +11,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { TableSchema, FieldChoice } from "./types.js";
 import { getTableSchema } from "./tools/getTableSchema.js";
 import { getFieldChoices } from "./tools/getFieldChoices.js";
+import { getScriptIncludeApi } from "./tools/getScriptIncludeApi.js";
 
 // Store connection string in module scope
 let serviceNowConnectionString: string | null = null;
@@ -53,6 +54,20 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
                         fieldName: { type: "string", description: "The technical name of the field (element) on the table (e.g., 'state')." },
                     },
                     required: ["tableName", "fieldName"]
+                }
+            },
+            {
+                name: "get_script_include_api",
+                description: "Retrieves the public API methods (function names, parameters, and JSDoc comments if available) for a specific Script Include. Helps understand how to call server-side reusable code.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        scriptIncludeName: {
+                            type: "string",
+                            description: "The name of the Script Include (e.g., 'IncidentUtils')."
+                        }
+                    },
+                    required: ["scriptIncludeName"]
                 }
             }
         ]
@@ -130,6 +145,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<z.infer
                 {
                     type: "text",
                     text: JSON.stringify(choices, null, 2),
+                }
+            ]
+        };
+    } else if (request.params.name === "get_script_include_api") {
+        const scriptIncludeName = request.params.arguments?.scriptIncludeName as string;
+
+        if (!scriptIncludeName) {
+            throw new Error("Missing required argument: scriptIncludeName for get_script_include_api");
+        }
+
+        // Call the tool function
+        const result = await getScriptIncludeApi(scriptIncludeName, serviceNowConnectionString);
+
+        // Format the result
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(result, null, 2),
                 }
             ]
         };
