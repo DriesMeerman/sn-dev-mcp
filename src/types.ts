@@ -28,3 +28,43 @@ export interface Resource {
     mimeType: MimeType;
     uri: string;
 }
+
+// Helper type for fields that return value/display_value pairs
+export interface ValueDisplayValue {
+    value: string;
+    display_value: string;
+    link?: string; // Optional link
+}
+
+// --- Interfaces for ServiceNow API Responses ---
+
+// Interface for a single record from sys_db_object
+export interface SysDbObjectRecord {
+    name: string; // Technical table name
+    label: string; // Display label for the table
+    sys_id: string;
+    // Add other sys_db_object fields if needed
+}
+
+// Interface for the response from /api/now/table/sys_db_object
+export interface SysDbObjectResponse {
+    result: SysDbObjectRecord[];
+}
+
+// Interface for a single record from sys_dictionary
+export interface SysDictionaryRecord {
+    element: ValueDisplayValue; // Field name
+    internal_type: ValueDisplayValue; // Field type
+    column_label?: ValueDisplayValue; // Field display label
+    reference?: ValueDisplayValue; // Referenced table name (for reference type)
+    max_length?: ValueDisplayValue; // Max length
+    mandatory?: ValueDisplayValue; // Mandatory flag ('true'/'false')
+    read_only?: ValueDisplayValue; // Read-only flag ('true'/'false')
+    comments?: ValueDisplayValue; // Field comments/description
+    // Add other sys_dictionary fields if needed
+}
+
+// Interface for the response from /api/now/table/sys_dictionary
+export interface SysDictionaryResponse {
+    result: SysDictionaryRecord[];
+}

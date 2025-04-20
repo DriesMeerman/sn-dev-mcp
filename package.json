@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "dev": "npm run build && ./run-inspector.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",

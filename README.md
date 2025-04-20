@@ -35,6 +35,12 @@ By connecting this server to your MCP-compatible tool, you can ask questions or 
 
 
 # Start the inspector to test
+Create a .env file based on the .env.example file and fill in with your data.
+Then execute:
+`npm run dev`
+This will start the mcp inspector.
+
+
 MCP Inspector Documentation: [https://modelcontextprotocol.io/docs/tools/inspector](https://modelcontextprotocol.io/docs/tools/inspector)
 
 Build the server and run the inspector, replacing placeholders with your ServiceNow credentials and instance name:

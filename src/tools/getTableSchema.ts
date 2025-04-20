@@ -1,46 +1,54 @@
-import { TableSchema, FieldSchema } from "../types.js";
+import {
+    TableSchema,
+    FieldSchema,
+    ValueDisplayValue,
+    SysDbObjectRecord,
+    SysDbObjectResponse,
+    SysDictionaryRecord,
+    SysDictionaryResponse
+} from "../types.js";
 import { ServiceNowService } from "../services/serviceNowService.js";
 import { URL } from 'url'; // Import URL for parsing
 
 // Helper type for fields that return value/display_value pairs
-interface ValueDisplayValue {
-    value: string;
-    display_value: string;
-    link?: string; // Optional link
-}
+// interface ValueDisplayValue { -- REMOVE
+//    value: string; -- REMOVE
+//    display_value: string; -- REMOVE
+//    link?: string; // Optional link -- REMOVE
+// } -- REMOVE
 
-// --- Interfaces for ServiceNow API Responses ---
+// --- Interfaces for ServiceNow API Responses --- // REMOVE
 
-// Interface for a single record from sys_db_object
-interface SysDbObjectRecord {
-    name: string; // Technical table name
-    label: string; // Display label for the table
-    sys_id: string;
-    // Add other sys_db_object fields if needed
-}
+// Interface for a single record from sys_db_object // REMOVE
+// interface SysDbObjectRecord { // REMOVE
+//    name: string; // Technical table name // REMOVE
+//    label: string; // Display label for the table // REMOVE
+//    sys_id: string; // REMOVE
+//    // Add other sys_db_object fields if needed // REMOVE
+// } // REMOVE
 
-// Interface for the response from /api/now/table/sys_db_object
-interface SysDbObjectResponse {
-    result: SysDbObjectRecord[];
-}
+// Interface for the response from /api/now/table/sys_db_object // REMOVE
+// interface SysDbObjectResponse { // REMOVE
+//    result: SysDbObjectRecord[]; // REMOVE
+// } // REMOVE
 
-// Interface for a single record from sys_dictionary
-interface SysDictionaryRecord {
-    element: ValueDisplayValue; // Field name
-    internal_type: ValueDisplayValue; // Field type
-    column_label?: ValueDisplayValue; // Field display label
-    reference?: ValueDisplayValue; // Referenced table name (for reference type)
-    max_length?: ValueDisplayValue; // Max length
-    mandatory?: ValueDisplayValue; // Mandatory flag ('true'/'false')
-    read_only?: ValueDisplayValue; // Read-only flag ('true'/'false')
-    comments?: ValueDisplayValue; // Field comments/description
-    // Add other sys_dictionary fields if needed
-}
+// Interface for a single record from sys_dictionary // REMOVE
+// interface SysDictionaryRecord { // REMOVE
+//    element: ValueDisplayValue; // Field name // REMOVE
+//    internal_type: ValueDisplayValue; // Field type // REMOVE
+//    column_label?: ValueDisplayValue; // Field display label // REMOVE
+//    reference?: ValueDisplayValue; // Referenced table name (for reference type) // REMOVE
+//    max_length?: ValueDisplayValue; // Max length // REMOVE
+//    mandatory?: ValueDisplayValue; // Mandatory flag ('true'/'false') // REMOVE
+//    read_only?: ValueDisplayValue; // Read-only flag ('true'/'false') // REMOVE
+//    comments?: ValueDisplayValue; // Field comments/description // REMOVE
+//    // Add other sys_dictionary fields if needed // REMOVE
+// } // REMOVE
 
-// Interface for the response from /api/now/table/sys_dictionary
-interface SysDictionaryResponse {
-    result: SysDictionaryRecord[];
-}
+// Interface for the response from /api/now/table/sys_dictionary // REMOVE
+// interface SysDictionaryResponse { // REMOVE
+//    result: SysDictionaryRecord[]; // REMOVE
+// } // REMOVE
 
 // --- Main Function ---
 
