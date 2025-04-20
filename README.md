@@ -1,10 +1,15 @@
 # ServiceNow MCP server
 
-This project provides a Model Context Protocol (MCP) server designed to bridge the gap between MCP-enabled development tools (like compatible IDEs and editors) and ServiceNow instances. It allows these tools to query and understand the structure of your ServiceNow environment by interacting with the ServiceNow REST API mainly calling the sys_db_object and dictionary tables.
+This project provides a Model Context Protocol (MCP) server designed to bridge the gap between MCP-enabled development tools (like compatible IDEs and editors) and ServiceNow instances.
+It allows these tools to query and understand the structure of your ServiceNow environment by interacting with the ServiceNow REST API.
+Various tools are all focussed on allowing LLM's to write better code in your ServiceNow environment.
 
 Learn more about MCP: [https://modelcontextprotocol.io/](https://modelcontextprotocol.io/)
 
 This project is not meant to be production ready, just a quick POC built using cursor.
+
+
+
 
 ## What is the Model Context Protocol (MCP)?
 
@@ -35,6 +40,12 @@ By connecting this server to your MCP-compatible tool, you can ask questions or 
 
 
 # Start the inspector to test
+Create a .env file based on the .env.example file and fill in with your data.
+Then execute:
+`npm run dev`
+This will start the mcp inspector.
+
+
 MCP Inspector Documentation: [https://modelcontextprotocol.io/docs/tools/inspector](https://modelcontextprotocol.io/docs/tools/inspector)
 
 Build the server and run the inspector, replacing placeholders with your ServiceNow credentials and instance name:

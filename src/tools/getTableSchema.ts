@@ -1,48 +1,15 @@
-import { TableSchema, FieldSchema } from "../types.js";
+import {
+    TableSchema,
+    FieldSchema,
+    ValueDisplayValue,
+    SysDbObjectRecord,
+    SysDbObjectResponse,
+    SysDictionaryRecord,
+    SysDictionaryResponse
+} from "../types.js";
 import { ServiceNowService } from "../services/serviceNowService.js";
 import { URL } from 'url'; // Import URL for parsing
 
-// Helper type for fields that return value/display_value pairs
-interface ValueDisplayValue {
-    value: string;
-    display_value: string;
-    link?: string; // Optional link
-}
-
-// --- Interfaces for ServiceNow API Responses ---
-
-// Interface for a single record from sys_db_object
-interface SysDbObjectRecord {
-    name: string; // Technical table name
-    label: string; // Display label for the table
-    sys_id: string;
-    // Add other sys_db_object fields if needed
-}
-
-// Interface for the response from /api/now/table/sys_db_object
-interface SysDbObjectResponse {
-    result: SysDbObjectRecord[];
-}
-
-// Interface for a single record from sys_dictionary
-interface SysDictionaryRecord {
-    element: ValueDisplayValue; // Field name
-    internal_type: ValueDisplayValue; // Field type
-    column_label?: ValueDisplayValue; // Field display label
-    reference?: ValueDisplayValue; // Referenced table name (for reference type)
-    max_length?: ValueDisplayValue; // Max length
-    mandatory?: ValueDisplayValue; // Mandatory flag ('true'/'false')
-    read_only?: ValueDisplayValue; // Read-only flag ('true'/'false')
-    comments?: ValueDisplayValue; // Field comments/description
-    // Add other sys_dictionary fields if needed
-}
-
-// Interface for the response from /api/now/table/sys_dictionary
-interface SysDictionaryResponse {
-    result: SysDictionaryRecord[];
-}
-
-// --- Main Function ---
 
 export async function getTableSchema(tableName: string, connectionString: string): Promise<TableSchema | null> {
     // Parse the connection string
@@ -105,7 +72,7 @@ export async function getTableSchema(tableName: string, connectionString: string
             }
         );
 
-        // 3. Map sys_dictionary results to FieldSchema[]
+        // 3. Map sys_dictionary results to FieldSchema[] (Renumbered)
         const mappedFields = (dictionaryResponse.result || []).map(dictEntry => {
             const maxLengthValue = dictEntry.max_length?.value;
             // Ensure we have the necessary fields before mapping
@@ -114,17 +81,21 @@ export async function getTableSchema(tableName: string, connectionString: string
                 return null; // Skip this entry if core data is missing
             }
 
+            const fieldType = dictEntry.internal_type.value;
+            const fieldName = dictEntry.element.value;
+
             // Construct the field object conforming to FieldSchema
             const field: FieldSchema = {
-                name: dictEntry.element.value,
-                label: dictEntry.column_label?.display_value || dictEntry.element.value, // Fallback label to element name
-                type: dictEntry.internal_type.value,
+                name: fieldName,
+                label: dictEntry.column_label?.display_value || fieldName, // Fallback label to element name
+                type: fieldType,
                 description: dictEntry.comments?.value || '',
                 // Only include referenceTable if the type is reference and value is present
-                referenceTable: dictEntry.internal_type.value === 'reference' && dictEntry.reference?.value ? dictEntry.reference.value : undefined,
+                referenceTable: fieldType === 'reference' && dictEntry.reference?.value ? dictEntry.reference.value : undefined,
                 maxLength: maxLengthValue ? parseInt(maxLengthValue.replace(/,/g, ''), 10) : undefined, // Parse to number, remove commas
                 mandatory: dictEntry.mandatory?.value === 'true',
                 readOnly: dictEntry.read_only?.value === 'true',
+                // Removed choices property
             };
             return field;
         });
@@ -136,7 +107,7 @@ export async function getTableSchema(tableName: string, connectionString: string
 
         const sortedFields = fields.sort((a, b) => a.name.localeCompare(b.name));
 
-        // 4. Construct final TableSchema
+        // 4. Construct final TableSchema (Renumbered)
         const tableSchema: TableSchema = {
             label: tableLabel,
             name: actualTableName,
@@ -151,11 +122,3 @@ export async function getTableSchema(tableName: string, connectionString: string
         throw error;
     }
 }
-
-// Removed previous implementation and mock function
-/*
-// Define the expected structure of the API response payload for the schema
-interface ServiceNowTableSchemaResponse { ... }
-export async function getTableSchema(tableName: string): Promise<TableSchema> { ... }
-async function getTableSchemaMock(name: string): Promise<TableSchema> { ... }
-*/
