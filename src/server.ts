@@ -75,7 +75,7 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
             {
                 name: "find_relevant_scripts",
                 description:
-                    "Searches for existing scripts (Business Rules, Script Includes, Client Scripts) potentially relevant based on table name, keywords, or scope. Helps discover existing logic.",
+                    "Searches for existing scripts (Business Rules, Script Includes, Client Scripts) potentially relevant based on table name, keywords, or scope. Helps discover existing logic. At least one of tableName, keywords, or scopeName must be provided.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -98,11 +98,6 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
                                 "Optional. The name or label of the application scope to filter by (e.g., 'Global', 'My Custom App').",
                         },
                     },
-                    anyOf: [
-                        { required: ["tableName"] },
-                        { required: ["keywords"] },
-                        { required: ["scopeName"] },
-                    ],
                 },
             },
             {
@@ -121,7 +116,7 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
             },
             {
                 name: "get_business_rule_details",
-                description: "Retrieves metadata for Business Rules matching a specific name or table (e.g., trigger conditions, order, active status, conditions). Returns rules ordered by execution order when searching by table.",
+                description: "Retrieves metadata for Business Rules matching a specific name or table (e.g., trigger conditions, order, active status, conditions). Returns rules ordered by execution order when searching by table. At least one of businessRuleName or tableName must be provided.",
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -134,10 +129,6 @@ server.setRequestHandler(ListToolsRequestSchema, async (): Promise<z.infer<typeo
                             description: "Optional. The table the Business Rule runs on."
                         }
                     },
-                    anyOf: [
-                        { required: ["businessRuleName"] },
-                        { required: ["tableName"] }
-                    ]
                 }
             },
             {
